@@ -1,11 +1,11 @@
 /* ── State ─────────────────────────────────────────────────────────────────── */
 
-let currentPoemId  = null;
-let sliderValue    = null;   // null = untouched
-let highlights     = [];
-let dragging       = false;
-let submitted      = false;
-let polling        = false;
+let currentPoemId = null;
+let sliderValue   = null;   // null = untouched
+let highlights    = [];
+let dragging      = false;
+let submitted     = false;
+let polling       = false;
 
 /* ── Elements ──────────────────────────────────────────────────────────────── */
 
@@ -16,10 +16,10 @@ const track         = document.getElementById('slider-track');
 const fill          = document.getElementById('slider-fill');
 const thumb         = document.getElementById('slider-thumb');
 const sendHint      = document.getElementById('send-hint');
-const lineageToggle = document.getElementById('lineage-toggle');
-const lineagePanel  = document.getElementById('lineage-panel');
-const lineageClose  = document.getElementById('lineage-close');
-const lineageList   = document.getElementById('lineage-list');
+const speciesToggle = document.getElementById('species-toggle');
+const speciesPanel  = document.getElementById('species-panel');
+const speciesClose  = document.getElementById('species-close');
+const speciesList   = document.getElementById('species-list');
 
 /* ── Slider ────────────────────────────────────────────────────────────────── */
 
@@ -32,8 +32,8 @@ function valueFromEvent(e) {
 function setSlider(val) {
   sliderValue = val;
   const pct   = (val * 100).toFixed(2) + '%';
-  thumb.style.left  = pct;
-  fill.style.width  = pct;
+  thumb.style.left = pct;
+  fill.style.width = pct;
   thumb.classList.remove('untouched');
   sendHint.classList.add('visible');
 }
@@ -57,10 +57,10 @@ function onDrag(e) {
   setSlider(valueFromEvent(e));
 }
 
-document.addEventListener('mouseup',   endDrag);
-document.addEventListener('touchend',  endDrag);
+document.addEventListener('mouseup',  endDrag);
+document.addEventListener('touchend', endDrag);
 
-function endDrag(e) {
+function endDrag() {
   if (!dragging) return;
   dragging = false;
   thumb.classList.remove('dragging');
@@ -124,11 +124,11 @@ async function submit() {
   });
 
   // Reset slider
-  sliderValue        = null;
-  highlights         = [];
-  hlWrap.innerHTML   = '';
-  thumb.style.left   = '0%';
-  fill.style.width   = '0%';
+  sliderValue      = null;
+  highlights       = [];
+  hlWrap.innerHTML = '';
+  thumb.style.left = '0%';
+  fill.style.width = '0%';
   thumb.classList.add('untouched');
 
   // Wait for next poem
@@ -159,10 +159,9 @@ async function pollForPoem() {
 }
 
 function displayPoem(data) {
-  currentPoemId       = data.id;
-  submitted           = false;
-
-  poemEl.textContent  = data.text;
+  currentPoemId        = data.id;
+  submitted            = false;
+  poemEl.textContent   = data.text;
   poemEl.classList.remove('fading', 'dim');
   statusEl.textContent = '';
   sendHint.classList.remove('visible');
@@ -172,49 +171,49 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-/* ── Lineage panel ─────────────────────────────────────────────────────────── */
+/* ── Species panel ─────────────────────────────────────────────────────────── */
 
-lineageToggle.addEventListener('click', openLineagePanel);
-lineageClose.addEventListener('click',  () => lineagePanel.classList.remove('open'));
+speciesToggle.addEventListener('click', openSpeciesPanel);
+speciesClose.addEventListener('click',  () => speciesPanel.classList.remove('open'));
 
-async function openLineagePanel() {
-  lineagePanel.classList.add('open');
-  lineageList.innerHTML = '<p style="color:#555;font-size:0.8rem">Loading…</p>';
+async function openSpeciesPanel() {
+  speciesPanel.classList.add('open');
+  speciesList.innerHTML = '<p style="color:#555;font-size:0.8rem">Loading...</p>';
   try {
-    const res      = await fetch('/lineages');
-    const lineages = await res.json();
-    renderLineages(lineages);
+    const res     = await fetch('/species');
+    const species = await res.json();
+    renderSpecies(species);
   } catch {
-    lineageList.innerHTML = '<p style="color:#555;font-size:0.8rem">Could not load lineages.</p>';
+    speciesList.innerHTML = '<p style="color:#555;font-size:0.8rem">Could not load species.</p>';
   }
 }
 
-function renderLineages(lineages) {
-  lineageList.innerHTML = '';
+function renderSpecies(species) {
+  speciesList.innerHTML = '';
 
-  const active   = lineages.filter(l => l.active);
-  const inactive = lineages.filter(l => !l.active);
+  const active   = species.filter(s => s.active);
+  const inactive = species.filter(s => !s.active);
 
-  function card(l) {
-    const div = document.createElement('div');
-    div.className = 'lineage-card' + (l.active ? '' : ' inactive');
+  function card(s) {
+    const div     = document.createElement('div');
+    div.className = 'species-card' + (s.active ? '' : ' inactive');
 
-    const fitness = typeof l.fitness === 'number' ? l.fitness : 0.5;
+    const fitness = typeof s.fitness === 'number' ? s.fitness : 0.5;
     const pct     = Math.round(fitness * 100);
 
     div.innerHTML = `
-      <div class="lineage-prompt">${escHtml(l.prompt)}</div>
+      <div class="species-prompt">${escHtml(s.prompt)}</div>
       <div class="fitness-bar-wrap">
         <div class="fitness-bar" style="width:${pct}%"></div>
       </div>
-      <div class="lineage-meta">
+      <div class="species-meta">
         <span>fitness ${fitness.toFixed(2)}</span>
-        <span>${l.poem_count} poem${l.poem_count !== 1 ? 's' : ''}</span>
-        ${l.parent_id ? '<span>branched</span>' : '<span>origin</span>'}
+        <span>${s.poem_count} poem${s.poem_count !== 1 ? 's' : ''}</span>
+        ${s.parent_id ? '<span>branched</span>' : '<span>origin</span>'}
       </div>
-      <div class="lineage-actions">
-        <button data-id="${l.id}" data-action="${l.active ? 'deactivate' : 'activate'}">
-          ${l.active ? 'Deactivate' : 'Revive'}
+      <div class="species-actions">
+        <button data-id="${s.id}" data-action="${s.active ? 'deactivate' : 'activate'}">
+          ${s.active ? 'Kill' : 'Revive'}
         </button>
       </div>
     `;
@@ -223,8 +222,8 @@ function renderLineages(lineages) {
       const btn    = e.currentTarget;
       const id     = btn.dataset.id;
       const action = btn.dataset.action;
-      await fetch(`/lineage/${id}/${action}`, { method: 'POST' });
-      await openLineagePanel();
+      await fetch(`/species/${id}/${action}`, { method: 'POST' });
+      await openSpeciesPanel();
     });
 
     return div;
@@ -233,20 +232,20 @@ function renderLineages(lineages) {
   if (active.length) {
     const h = document.createElement('h2');
     h.textContent = `Active — ${active.length}`;
-    lineageList.appendChild(h);
-    active.forEach(l => lineageList.appendChild(card(l)));
+    speciesList.appendChild(h);
+    active.forEach(s => speciesList.appendChild(card(s)));
   }
 
   if (inactive.length) {
     const h = document.createElement('h2');
     h.style.marginTop = '2rem';
-    h.textContent = `Inactive — ${inactive.length}`;
-    lineageList.appendChild(h);
-    inactive.forEach(l => lineageList.appendChild(card(l)));
+    h.textContent = `Extinct — ${inactive.length}`;
+    speciesList.appendChild(h);
+    inactive.forEach(s => speciesList.appendChild(card(s)));
   }
 
-  if (!lineages.length) {
-    lineageList.innerHTML = '<p style="color:#555;font-size:0.8rem">No lineages yet.</p>';
+  if (!species.length) {
+    speciesList.innerHTML = '<p style="color:#555;font-size:0.8rem">No species yet.</p>';
   }
 }
 

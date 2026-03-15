@@ -172,7 +172,7 @@ html, body {
 
 /* ── Lineage toggle ──────────────────────────────────────────────────────── */
 
-#lineage-toggle {
+#species-toggle {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
@@ -187,11 +187,11 @@ html, body {
   font-family: Georgia, serif;
 }
 
-#lineage-toggle:hover { color: var(--dim); }
+#species-toggle:hover { color: var(--dim); }
 
 /* ── Lineage panel ───────────────────────────────────────────────────────── */
 
-#lineage-panel {
+#species-panel {
   position: fixed;
   inset: 0;
   background: rgba(10, 10, 10, 0.96);
@@ -202,11 +202,11 @@ html, body {
   gap: 1.5rem;
 }
 
-#lineage-panel.open {
+#species-panel.open {
   display: flex;
 }
 
-#lineage-close {
+#species-close {
   position: fixed;
   top: 1.5rem;
   right: 1.5rem;
@@ -218,9 +218,9 @@ html, body {
   line-height: 1;
 }
 
-#lineage-close:hover { color: var(--text); }
+#species-close:hover { color: var(--text); }
 
-#lineage-panel h2 {
+#species-panel h2 {
   font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -228,7 +228,7 @@ html, body {
   font-weight: normal;
 }
 
-.lineage-card {
+.species-card {
   border: 1px solid #1e1e1e;
   border-radius: 4px;
   padding: 1.25rem;
@@ -238,15 +238,15 @@ html, body {
   max-width: 40rem;
 }
 
-.lineage-card.inactive { opacity: 0.4; }
+.species-card.inactive { opacity: 0.4; }
 
-.lineage-prompt {
+.species-prompt {
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text);
 }
 
-.lineage-meta {
+.species-meta {
   display: flex;
   gap: 1.5rem;
   font-size: 0.65rem;
@@ -268,7 +268,7 @@ html, body {
   border-radius: 1px;
 }
 
-.lineage-actions button {
+.species-actions button {
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -282,7 +282,7 @@ html, body {
   transition: border-color 0.2s, color 0.2s;
 }
 
-.lineage-actions button:hover {
+.species-actions button:hover {
   border-color: var(--dim);
   color: var(--text);
 }
