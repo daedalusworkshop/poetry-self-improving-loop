@@ -1,7 +1,7 @@
 ---
 title: Poetry Self-Improving Loop
 type: feat
-status: active
+status: completed
 date: 2026-03-15
 origin: docs/brainstorms/2026-03-15-poetry-self-improving-loop-brainstorm.md
 ---
@@ -146,16 +146,16 @@ selected = random.choices(active_lineages, weights=weights, k=1)[0]
 
 **Goal:** The loop runs, generates poems, saves data, mutates prompt.
 
-- [ ] `loop.py` — skeleton: load prompt, call Claude, save poem, await rating
-- [ ] Claude API integration (anthropic SDK, model: `claude-haiku-4-5-20251001` for speed/cost)
-- [ ] `data/poems.json` read/write helpers
-- [ ] `data/lineages.json` read/write helpers
-- [ ] Seed lineage from `prompt.md` on first run
-- [ ] Mutation: send poem + rating + highlights to Claude, overwrite `prompt.md`
-- [ ] Branch spawning when rating > 0.5
-- [ ] Branch selection (weighted random by fitness)
-- [ ] Auto-extinction check after each rating
-- [ ] `requirements.txt` + `.env` setup
+- [x] `loop.py` — skeleton: load prompt, call Claude, save poem, await rating
+- [x] Claude API integration (anthropic SDK, model: `claude-haiku-4-5-20251001` for speed/cost)
+- [x] `data/poems.json` read/write helpers
+- [x] `data/lineages.json` read/write helpers
+- [x] Seed lineage from `prompt.md` on first run
+- [x] Mutation: send poem + rating + highlights to Claude, overwrite `prompt.md`
+- [x] Branch spawning when rating > 0.5
+- [x] Branch selection (weighted random by fitness)
+- [x] Auto-extinction check after each rating
+- [x] `requirements.txt` + `.env` setup
 
 **Files:**
 - `loop.py`
@@ -169,16 +169,16 @@ selected = random.choices(active_lineages, weights=weights, k=1)[0]
 
 **Goal:** Human can rate poems in the browser. Loop and UI are fully connected.
 
-- [ ] Embed a minimal HTTP server in `loop.py` (Python's `http.server` or `flask`)
-- [ ] `GET /poem` — returns pending poem JSON
-- [ ] `POST /rate` — receives rating + highlights, triggers mutation cycle
-- [ ] `GET /lineages` — returns lineage tree
-- [ ] `index.html` — full-screen poem display, one poem at a time, no context
-- [ ] Slider UI — smooth 0–1 range, `nothing` → `frisson` → `masterpiece` labels, hold-to-drag
-- [ ] Frisson highlighter — text selection on the poem, highlights stored in state
-- [ ] Submit sends rating + highlights to `POST /rate`
-- [ ] UI polls `GET /poem` until a new pending poem appears (after submission)
-- [ ] Blind rating — no branch name, no lineage info shown in default view
+- [x] Embed a minimal HTTP server in `loop.py` (Flask)
+- [x] `GET /poem` — returns pending poem JSON
+- [x] `POST /rate` — receives rating + highlights, triggers mutation cycle
+- [x] `GET /lineages` — returns lineage tree
+- [x] `index.html` — full-screen poem display, one poem at a time, no context
+- [x] Slider UI — smooth 0–1 range, `nothing` → `frisson` → `masterpiece` labels, hold-to-drag
+- [x] Frisson highlighter — text selection on the poem, highlights stored in state
+- [x] Submit sends rating + highlights to `POST /rate`
+- [x] UI polls `GET /poem` until a new pending poem appears (after submission)
+- [x] Blind rating — no branch name, no lineage info shown in default view
 
 **Files:**
 - `web/index.html`
@@ -189,15 +189,15 @@ selected = random.choices(active_lineages, weights=weights, k=1)[0]
 
 **Goal:** Hidden by default. Toggle reveals the full branch tree.
 
-- [ ] `GET /lineages` endpoint returns full tree
-- [ ] Hidden toggle button in UI (subtle, corner)
-- [ ] Lineage panel: list of active branches, each showing:
+- [x] `GET /lineages` endpoint returns full tree
+- [x] Hidden toggle button in UI (subtle, corner)
+- [x] Lineage panel: list of active branches, each showing:
   - Current prompt text
   - Fitness score
   - Poem count
   - Deactivate button
-- [ ] Inactive branches shown separately with Revive button
-- [ ] `POST /lineage/:id/deactivate` and `POST /lineage/:id/activate` wired up
+- [x] Inactive branches shown separately with Revive button
+- [x] `POST /lineage/:id/deactivate` and `POST /lineage/:id/activate` wired up
 
 **Files:**
 - Updates to `web/index.html`, `web/app.js`, `web/style.css`

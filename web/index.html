@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>poem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Poem -->
+  <div id="poem-wrap">
+    <div id="poem"></div>
+    <div id="status"></div>
+  </div>
+
+  <!-- Highlighted phrases (accumulated) -->
+  <div id="highlights"></div>
+
+  <!-- Slider -->
+  <div id="slider-wrap">
+    <div id="slider-labels">
+      <span>nothing</span>
+      <span>frisson</span>
+      <span>masterpiece</span>
+    </div>
+    <div id="slider-track">
+      <div id="slider-fill"></div>
+      <div id="slider-thumb" class="untouched"></div>
+    </div>
+  </div>
+
+  <div id="send-hint">release to send</div>
+
+</div>
+
+<!-- Lineage toggle (barely visible in corner) -->
+<button id="lineage-toggle">lineages</button>
+
+<!-- Lineage panel (full-screen overlay) -->
+<div id="lineage-panel">
+  <button id="lineage-close">✕</button>
+  <h2>Lineages</h2>
+  <div id="lineage-list"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0a0a0a;
+  --text:       #e8e6e0;
+  --dim:        #555;
+  --frisson:    #c4a882;
+  --highlight:  rgba(196, 168, 130, 0.25);
+  --track:      #2a2a2a;
+  --thumb:      #e8e6e0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5rem;
+  padding: 2rem;
+}
+
+/* ── Poem ───────────────────────────────────────────────────────────────── */
+
+#poem-wrap {
+  max-width: 36rem;
+  width: 100%;
+  text-align: center;
+}
+
+#poem {
+  font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  transition: opacity 0.4s ease;
+}
+
+#poem.dim    { opacity: 0.2; }
+#poem.fading { opacity: 0; }
+
+#poem ::selection      { background: var(--highlight); color: inherit; }
+#poem ::-moz-selection { background: var(--highlight); color: inherit; }
+
+#status {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  min-height: 1rem;
+  transition: opacity 0.3s;
+}
+
+/* ── Highlights ─────────────────────────────────────────────────────────── */
+
+#highlights {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 1.8rem;
+  max-width: 36rem;
+  width: 100%;
+}
+
+.hl-pill {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--frisson);
+  border: 1px solid rgba(196, 168, 130, 0.3);
+  border-radius: 2rem;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.hl-pill:hover { opacity: 0.5; }
+
+/* ── Slider ─────────────────────────────────────────────────────────────── */
+
+#slider-wrap {
+  width: min(28rem, 85vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+#slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#slider-labels span:first-child  { color: var(--dim); }
+#slider-labels span:nth-child(2) { color: var(--frisson); }
+#slider-labels span:last-child   { color: var(--dim); }
+
+#slider-track {
+  position: relative;
+  height: 1px;
+  background: var(--track);
+  cursor: pointer;
+}
+
+#slider-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--frisson);
+  width: 0%;
+  pointer-events: none;
+  transition: width 0.05s;
+}
+
+#slider-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--thumb);
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+#slider-thumb:active,
+#slider-thumb.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.25);
+  box-shadow: 0 0 0 6px rgba(232, 230, 224, 0.1);
+}
+
+#slider-thumb.untouched {
+  background: var(--dim);
+}
+
+/* ── Send hint ───────────────────────────────────────────────────────────── */
+
+#send-hint {
+  text-align: center;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: transparent;
+  transition: color 0.3s;
+  min-height: 1rem;
+}
+
+#send-hint.visible {
+  color: var(--dim);
+}
+
+/* ── Lineage toggle ──────────────────────────────────────────────────────── */
+
+#lineage-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #2a2a2a;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color 0.2s;
+  font-family: Georgia, serif;
+}
+
+#lineage-toggle:hover { color: var(--dim); }
+
+/* ── Lineage panel ───────────────────────────────────────────────────────── */
+
+#lineage-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.96);
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 3rem 2rem;
+  gap: 1.5rem;
+}
+
+#lineage-panel.open {
+  display: flex;
+}
+
+#lineage-close {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#lineage-close:hover { color: var(--text); }
+
+#lineage-panel h2 {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: normal;
+}
+
+.lineage-card {
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.lineage-card.inactive { opacity: 0.4; }
+
+.lineage-prompt {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.lineage-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.fitness-bar-wrap {
+  height: 2px;
+  background: var(--track);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.fitness-bar {
+  height: 100%;
+  background: var(--frisson);
+  border-radius: 1px;
+}
+
+.lineage-actions button {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid #2a2a2a;
+  color: var(--dim);
+  padding: 0.3rem 0.75rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  font-family: Georgia, serif;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.lineage-actions button:hover {
+  border-color: var(--dim);
+  color: var(--text);
+}
