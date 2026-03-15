@@ -439,6 +439,13 @@ def process_rating(r: dict) -> None:
                 sp = s
                 break
 
+        if rating == 0.0:
+            for s in all_species:
+                if s["id"] == sp["id"]:
+                    s["active"] = False
+                    print(f"💀 Species {sp['id'][:8]} killed (rating=0)")
+                    break
+
         all_species = maybe_branch(all_species, sp, poem_id, rating)
         all_species = check_extinction(all_species, poems)
         # Note: ensure_species_count makes API calls; do it outside the lock below
