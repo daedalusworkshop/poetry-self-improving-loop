@@ -27,6 +27,8 @@ BRANCH_THRESHOLD  = 0.5   # rating above this spawns a new species
 EXTINCTION_FLOOR  = 0.35  # fitness below this triggers auto-extinction
 EXTINCTION_MIN    = 5     # minimum poems before extinction can trigger
 FITNESS_WINDOW    = 5     # rolling average over last N rated poems
+TARGET_SPECIES    = 4     # always keep this many active species
+EXPLORATION_RATE  = 0.2   # 20% chance of picking a random species (exploration)
 
 BASE_DIR      = Path(__file__).parent
 DATA_DIR      = BASE_DIR / "data"
@@ -84,6 +86,12 @@ def select_next_species(all_species: list, poems: list) -> dict | None:
     active = [s for s in all_species if s["active"]]
     if not active:
         return None
+    # Exploration: occasionally pick any species at random (prevents starvation)
+    if random.random() < EXPLORATION_RATE:
+        chosen = random.choice(active)
+        print(f"🔀 Exploration pick: species {chosen['id'][:8]}")
+        return chosen
+    # Exploitation: weighted by fitness
     for s in active:
         s["fitness"] = compute_fitness(s["id"], poems)
     weights = [max(s["fitness"], 0.01) for s in active]
@@ -140,6 +148,63 @@ def seed_if_empty() -> None:
     }
     save_species([sp])
     print(f"✦ First species seeded from prompt.md")
+
+
+def spawn_new_species(existing_prompts: list, poems: list) -> dict:
+    """Spawn one new species that deliberately diverges from existing ones."""
+    all_highlights = [h for p in poems for h in p.get("highlights", [])]
+    seen = set()
+    unique_hl = [h for h in all_highlights if not (h in seen or seen.add(h))]
+
+    existing_str = "\n".join(f"- {p}" for p in existing_prompts) if existing_prompts else "none"
+    hl_str = ", ".join(f'"{h}"' for h in unique_hl[:10]) if unique_hl else "none yet"
+
+    content = (
+        f"These poetry prompts are already in play:\n{existing_str}\n\n"
+        f"Phrases that gave the reader a physical reaction: {hl_str}\n\n"
+        "Write a NEW poetry prompt (≤50 words) that goes somewhere completely different "
+        "from all the above — different sensory domain, different relationship to grammar "
+        "or silence or time. Be specific, physical, strange. "
+        "Do not explain — just write the prompt."
+    )
+    try:
+        msg = client.messages.create(
+            model=MODEL, max_tokens=150,
+            messages=[{"role": "user", "content": content}],
+        )
+        new_prompt = " ".join(msg.content[0].text.strip().split()[:50])
+    except Exception as e:
+        print(f"✗ API error (spawn_new_species): {e}")
+        new_prompt = PROMPT_FILE.read_text().strip()
+
+    print(f"🌱 New species: \"{new_prompt[:60]}...\"")
+    return {
+        "id":                 str(uuid.uuid4()),
+        "parent_id":          None,
+        "prompt":             new_prompt,
+        "fitness":            0.5,
+        "poem_count":         0,
+        "spawned_by_poem_id": None,
+        "spawned_by_rating":  None,
+        "active":             True,
+        "created_at":         now_iso(),
+        "last_rated_at":      None,
+    }
+
+
+def ensure_species_count(all_species: list, poems: list) -> list:
+    """Always keep TARGET_SPECIES active species in the pool."""
+    active = [s for s in all_species if s["active"]]
+    needed = TARGET_SPECIES - len(active)
+    if needed <= 0:
+        return all_species
+    print(f"🌍 {len(active)} active species, spawning {needed} more...")
+    existing_prompts = [s["prompt"] for s in all_species if s["active"]]
+    for _ in range(needed):
+        new_sp = spawn_new_species(existing_prompts, poems)
+        all_species.append(new_sp)
+        existing_prompts.append(new_sp["prompt"])
+    return all_species
 
 
 # ── Claude calls ──────────────────────────────────────────────────────────────
@@ -243,13 +308,22 @@ def generate_poem(sp: dict) -> dict | None:
 
 def mutate_prompt(sp: dict, poem: dict, rating: float, highlights: list) -> str:
     hl = json.dumps(highlights) if highlights else "[]"
+    if highlights:
+        hl_section = (
+            f"The reader highlighted these phrases: {hl}\n"
+            "These mark a physical reaction — a chill, a catch in the throat. "
+            "The specific words are not the point. Chase the felt quality behind them: "
+            "the compression, the rhythm, the thing that made the body respond. "
+            "Do not repeat the highlighted words. Go deeper than them.\n\n"
+        )
+    else:
+        hl_section = "No phrases were highlighted.\n\n"
     content = (
         f"Current prompt (≤50 words):\n{sp['prompt']}\n\n"
         f"Most recent poem:\n{poem['text']}\n\n"
-        f"Rating: {rating:.2f} (0=nothing, 0.5=frisson, 1=masterpiece)\n"
-        f"Highlighted phrases: {hl}\n\n"
-        "Rewrite the prompt (≤50 words) to produce more of what caused those highlights. "
-        "If nothing was highlighted, evolve toward the rating signal alone. "
+        f"Rating: {rating:.2f} (0=nothing, 0.5=frisson, 1=masterpiece)\n\n"
+        f"{hl_section}"
+        "Rewrite the prompt (≤50 words) to move toward more of that quality. "
         "Keep what's working. Do not explain — just write the new prompt."
     )
     try:
@@ -325,6 +399,11 @@ def activate_species(species_id):
 
 def run_loop():
     seed_if_empty()
+    # Ensure we start with TARGET_SPECIES active species
+    all_species = load_species()
+    poems       = load_poems()
+    all_species = ensure_species_count(all_species, poems)
+    save_species(all_species)
     print(f"✦ Loop started. Open http://localhost:{PORT}")
 
     while True:
@@ -348,11 +427,13 @@ def run_loop():
         else:
             sp = select_next_species(all_species, poems)
             if sp is None:
-                print("💀 All species extinct. Spontaneous generation...")
-                sp          = spontaneous_generation(poems)
-                all_species = load_species()
-                all_species.append(sp)
+                print("💀 All species extinct. Refilling...")
+                all_species = ensure_species_count(all_species, poems)
                 save_species(all_species)
+                sp = next((s for s in all_species if s["active"]), None)
+                if sp is None:
+                    time.sleep(5)
+                    continue
 
             print(f"⟳ Generating from species {sp['id'][:8]}...")
             poem = generate_poem(sp)
@@ -414,9 +495,10 @@ def run_loop():
             tmp.write_text(best["prompt"])
             tmp.rename(PROMPT_FILE)
 
-        # Branch + extinction
+        # Branch + extinction + refill
         all_species = maybe_branch(all_species, sp, poem["id"], rating)
         all_species = check_extinction(all_species, poems)
+        all_species = ensure_species_count(all_species, poems)
 
         # Persist species update
         for i, s in enumerate(all_species):
