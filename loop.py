@@ -36,9 +36,10 @@ EXPLORATION_RATE = 0.2
 BASE_DIR     = Path(__file__).parent
 DATA_DIR     = BASE_DIR / "data"
 PROMPT_FILE  = BASE_DIR / "prompt.md"
-POEMS_FILE   = DATA_DIR / "poems.json"
-SPECIES_FILE = DATA_DIR / "species.json"
-WEB_DIR      = BASE_DIR / "web"
+POEMS_FILE      = DATA_DIR / "poems.json"
+SPECIES_FILE    = DATA_DIR / "species.json"
+HIGHLIGHTS_FILE = DATA_DIR / "highlights.json"
+WEB_DIR         = BASE_DIR / "web"
 
 # Poem status values: "queued" | "showing" | "rated"
 # queued  = generated, waiting to be shown
@@ -70,6 +71,7 @@ def _load(path: Path, default: list | dict) -> list | dict:
     return json.loads(path.read_text())
 
 def load_poems()              -> list[dict]: return _load(POEMS_FILE, [])
+def load_highlights()         -> list[dict]: return _load(HIGHLIGHTS_FILE, [])
 def load_species()            -> list[dict]:
     old = DATA_DIR / "lineages.json"
     if not SPECIES_FILE.exists() and old.exists():
@@ -81,6 +83,21 @@ def append_poem(poem: dict) -> None:
         poems = load_poems()
         poems.append(poem)
         atomic_write(POEMS_FILE, poems)
+
+def record_highlights(phrases: list[str], poem_id: str,
+                      species_id: str, rating: float) -> None:
+    """Append highlighted phrases to the cross-species pool."""
+    with data_lock:
+        pool = load_highlights()
+        for phrase in phrases:
+            pool.append({
+                "phrase":     phrase,
+                "poem_id":    poem_id,
+                "species_id": species_id,
+                "rating":     rating,
+                "created_at": now_iso(),
+            })
+        atomic_write(HIGHLIGHTS_FILE, pool)
 
 def update_poem(poem_id: str, **kwargs) -> None:
     with data_lock:
@@ -189,9 +206,8 @@ def spawn_new_species_parallel(needed: int, existing_prompts: list[str],
     if needed <= 0:
         return []
 
-    unique_hl = list(dict.fromkeys(
-        h for p in poems for h in p.get("highlights", [])
-    ))
+    pool_entries = load_highlights()
+    unique_hl = list(dict.fromkeys(e["phrase"] for e in pool_entries))
 
     futures = [
         poem_pool.submit(_spawn_prompt, list(existing_prompts), unique_hl)
@@ -262,23 +278,36 @@ def generate_poem(sp: dict) -> dict | None:
     }
 
 
-def mutate_prompt(sp: dict, poem: dict, rating: float, highlights: list[str]) -> str:
+def mutate_prompt(sp: dict, poem: dict, rating: float,
+                  highlights: list[str], global_highlights: list[str]) -> str:
     if highlights:
         hl_section = (
-            f"The reader highlighted: {json.dumps(highlights)}\n"
+            f"The reader highlighted from THIS poem: {json.dumps(highlights)}\n"
             "These mark a physical reaction — a chill, a catch in the throat. "
             "The specific words are not the point. Chase the felt quality behind them: "
             "the compression, the rhythm, the thing that made the body respond. "
             "Do not repeat the highlighted words. Go deeper than them.\n\n"
         )
     else:
-        hl_section = "No phrases were highlighted.\n\n"
+        hl_section = "No phrases were highlighted from this poem.\n\n"
+
+    if global_highlights:
+        global_section = (
+            f"Across ALL species, these phrases have caused physical reactions in the reader: "
+            f"{json.dumps(global_highlights)}\n"
+            "These are signals from the reader's body — moments of felt quality that transcend "
+            "any single poem. They are not instructions; they are a compass heading. "
+            "Let them inform the direction without repeating them.\n\n"
+        )
+    else:
+        global_section = ""
 
     content = (
         f"Current prompt (≤50 words):\n{sp['prompt']}\n\n"
         f"Most recent poem:\n{poem['text']}\n\n"
         f"Rating: {rating:.2f} (0=nothing, 0.5=frisson, 1=masterpiece)\n\n"
         f"{hl_section}"
+        f"{global_section}"
         "Rewrite the prompt (≤50 words) to move toward more of that quality. "
         "Keep what's working. Do not explain — just write the new prompt."
     )
@@ -375,9 +404,25 @@ def process_rating(r: dict) -> None:
     # Mark poem rated
     update_poem(poem_id, status="rated", rating=rating, highlights=highlights)
 
+    # Record any highlights into the cross-species pool (frisson threshold)
+    if highlights and rating >= 0.5:
+        record_highlights(highlights, poem_id, sp["id"], rating)
+
+    # Pull recent cross-species highlights (most recent 15, deduplicated)
+    all_hl = load_highlights()
+    seen: set[str] = set()
+    global_highlights: list[str] = []
+    for entry in reversed(all_hl):
+        phrase = entry["phrase"]
+        if phrase not in seen:
+            seen.add(phrase)
+            global_highlights.append(phrase)
+        if len(global_highlights) == 15:
+            break
+
     # Mutate prompt (API call — no lock held)
     print(f"⟳ Mutating species {sp['id'][:8]}...")
-    new_prompt = mutate_prompt(sp, poem, rating, highlights)
+    new_prompt = mutate_prompt(sp, poem, rating, highlights, global_highlights)
     print(f"✦ New prompt: \"{new_prompt[:60]}...\"")
 
     # Update species, branch, extinction, refill — under lock for save only
