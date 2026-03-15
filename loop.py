@@ -139,6 +139,66 @@ def seed_if_empty() -> None:
 
 # ── Claude calls ──────────────────────────────────────────────────────────────
 
+def spontaneous_generation(poems: list) -> dict:
+    """All species died. Birth a new lineage from the corpus of what landed."""
+    all_highlights = []
+    for p in poems:
+        all_highlights.extend(p.get("highlights", []))
+    # Deduplicate, keep order
+    seen = set()
+    unique_hl = [h for h in all_highlights if not (h in seen or seen.add(h))]
+
+    if unique_hl:
+        hl_str = ", ".join(f'"{h}"' for h in unique_hl[:20])
+        content = (
+            f"These are phrases that caused physical reactions in a reader: {hl_str}.\n\n"
+            "Write a new poetry prompt (≤50 words) that might produce more language like this. "
+            "Go somewhere the previous prompts didn't. Be specific, physical, strange. "
+            "Do not explain — just write the prompt."
+        )
+    else:
+        content = (
+            "All previous poetry lineages have gone extinct — nothing landed. "
+            "Write a completely new poetry prompt (≤50 words). "
+            "Try a radically different approach: different sensory domain, different register, "
+            "different relationship to language itself. Do not explain — just write the prompt."
+        )
+
+    try:
+        msg = client.messages.create(
+            model=MODEL,
+            max_tokens=150,
+            messages=[{"role": "user", "content": content}],
+        )
+        new_prompt = msg.content[0].text.strip()
+        words = new_prompt.split()
+        if len(words) > 50:
+            new_prompt = " ".join(words[:50])
+    except Exception as e:
+        print(f"✗ API error (spontaneous_generation): {e}")
+        new_prompt = PROMPT_FILE.read_text().strip()  # fall back to seed
+
+    print(f"✦ New species prompt: \"{new_prompt[:60]}...\"")
+
+    # Write to prompt.md so it's visible
+    tmp = PROMPT_FILE.with_suffix(".tmp")
+    tmp.write_text(new_prompt)
+    tmp.rename(PROMPT_FILE)
+
+    return {
+        "id":                 str(uuid.uuid4()),
+        "parent_id":          None,
+        "prompt":             new_prompt,
+        "fitness":            0.5,
+        "poem_count":         0,
+        "spawned_by_poem_id": None,
+        "spawned_by_rating":  None,
+        "active":             True,
+        "created_at":         now_iso(),
+        "last_rated_at":      None,
+    }
+
+
 def generate_poem(lineage: dict) -> dict | None:
     def call():
         msg = client.messages.create(
@@ -285,9 +345,11 @@ def run_loop():
         else:
             lineage = select_next_lineage(lineages, poems)
             if lineage is None:
-                print("✗ No active lineages. Waiting...")
-                time.sleep(5)
-                continue
+                print("💀 All lineages extinct. Spawning new species...")
+                lineage = spontaneous_generation(poems)
+                lineages = load_lineages()
+                lineages.append(lineage)
+                save_lineages(lineages)
 
             print(f"⟳ Generating from lineage {lineage['id'][:8]}…")
             poem = generate_poem(lineage)
